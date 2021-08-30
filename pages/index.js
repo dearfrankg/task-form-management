@@ -1,4 +1,10 @@
-import { ProfileForm } from "../components";
+import * as obj from "../app/components";
+import { checkComponentCount } from "../app/utils";
+checkComponentCount(obj, "pages.index");
+
+// import { Data2 } from "../data2";
+
+import { DemoForm } from "../app/components";
 import styles from "../styles/Home.module.css";
 import Head from "next/head";
 
@@ -12,8 +18,12 @@ export default function Home() {
 
       <header className={styles.header}>
         <img src="/logo.svg" className={styles.logo} alt="logo" />
-        <ProfileForm />
       </header>
+
+      <main>
+        <p>Hello</p>
+        {/* <DemoForm /> */}
+      </main>
     </div>
   );
 }
