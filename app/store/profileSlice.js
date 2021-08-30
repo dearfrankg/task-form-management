@@ -4,15 +4,17 @@ const dateFormatList = ["DD/MM/YYYY", "DD/MM/YY"];
 const format = "h:mm a";
 
 const initialState = {
-  first: "",
+  first: "joe",
   last: "",
   address: "171 Alpine Way",
   city: "San Bruno",
   state: "California",
-  funny: true,
-  lazy: true,
-  chubby: true,
-  kind: true,
+  one: true,
+  two: true,
+  three: true,
+  four: true,
+  five: false,
+  six: false,
   single: true,
   switch: true,
   voted: "yes",

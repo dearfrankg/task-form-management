@@ -342,25 +342,27 @@ const antdFields = {
 
   grid: ({ item, isEditMode }) => {
     return (
-      <div style={{ width: item.config.width }}>
-        <Row {...item.config}>
-          {item.children.map((child, childIndex) => {
-            const col = childIndex % item.config.cols;
-            const span = item.config.spans[col];
-            const cellDataId = `${item.name}-cell${childIndex}`;
-            const childDataId = `${cellDataId}-${child.type}`;
-            if (!child.config) child.config = {};
-            child.name = childDataId;
-            child.config["data-test-id"] = childDataId;
+      <Form.Item>
+        <div style={{ width: item.config.width }}>
+          <Row {...item.config}>
+            {item.children.map((child, childIndex) => {
+              const col = childIndex % item.config.cols;
+              const span = item.config.spans[col];
+              const cellDataId = `${item.name}-cell${childIndex}`;
+              const childDataId = `${cellDataId}-${child.type}`;
+              if (!child.config) child.config = {};
+              child.name = child.name || childDataId;
+              child.config["data-test-id"] = child.name || childDataId;
 
-            return (
-              <Col data-test-id={cellDataId} key={cellDataId} span={span}>
-                <RenderField item={child} />
-              </Col>
-            );
-          })}
-        </Row>
-      </div>
+              return (
+                <Col data-test-id={cellDataId} key={cellDataId} span={span}>
+                  <RenderField item={child} />
+                </Col>
+              );
+            })}
+          </Row>
+        </div>
+      </Form.Item>
     );
   },
 
@@ -397,15 +399,6 @@ const antdFields = {
         </Space>
       </Image.PreviewGroup>
     );
-  },
-
-  component: ({ item, isEditMode }) => {
-    const RenderComponent = item.component;
-    return <RenderComponent />;
-  },
-
-  componentsFrom: ({ item, isEditMode }) => {
-    return <ComponentsForm />;
   },
 
   default: ({ item, isEditMode }) => {

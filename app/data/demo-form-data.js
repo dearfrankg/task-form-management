@@ -1,7 +1,3 @@
-import * as obj from "../components";
-import { checkComponentCount } from "../utils";
-checkComponentCount(obj, "data.demo-form-data");
-
 // import { componentsFormFields } from "./components-form-data";
 // const json = JSON.stringify(componentsFormFields, null, 2);
 

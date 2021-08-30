@@ -372,12 +372,14 @@ export const componentsFormFields = [
                 children: [
                   {
                     type: "button",
+                    name: "revertButton",
                     name: "revertChangesButton",
                     config: {},
                     label: "Revert changes",
                   },
                   {
                     type: "button",
+                    name: "saveButton",
                     name: "saveChangesButton",
                     config: { type: "primary" },
                     label: "Save changes",

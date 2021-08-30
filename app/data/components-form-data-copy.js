@@ -1,10 +1,6 @@
-import * as obj from "../components";
-import { checkComponentCount } from "../utils";
-checkComponentCount(obj, "data2.components-form-data");
-
 import { constants } from "./constants";
 
-export const componentsFormFields = [
+export const componentsFormFieldsCopy = [
   {
     type: "card",
     name: "tabPane2-card",
@@ -376,12 +372,14 @@ export const componentsFormFields = [
                 children: [
                   {
                     type: "button",
+                    name: "revertButton",
                     name: "revertChangesButton",
                     config: {},
                     label: "Revert changes",
                   },
                   {
                     type: "button",
+                    name: "saveButton",
                     name: "saveChangesButton",
                     config: { type: "primary" },
                     label: "Save changes",
