@@ -22,16 +22,6 @@ import {
   Image,
 } from "antd";
 import { get } from "lodash";
-// import { ComponentsForm } from "..";
-
-/*
-
-  SOME GOTCHAS
-
-    -- Fields can return undefined if they have no definite state from redux
-    -- example: checkbox is not check will return 'undefined' unless there is false value in redux
-
-*/
 
 const { Panel } = Collapse;
 const { TabPane } = Tabs;
@@ -39,6 +29,17 @@ const { Search } = Input;
 const { Text, Title } = Typography;
 
 const antdFields = {
+  json: ({ item }) => {
+    const hasConfig = item.data.config && Object.keys(item.data.config).length === 0;
+    if (hasConfig) delete item.data.config;
+    const json = JSON.stringify(item.data, null, 2);
+    return (
+      <Form.Item>
+        <pre style={{ fontSize: "0.7rem" }}>{json}</pre>
+      </Form.Item>
+    );
+  },
+
   verticalSpace: ({ item, isEditMode }) => {
     return <div direction="vertical" style={{ height: item.height }}></div>;
   },
@@ -304,7 +305,7 @@ const antdFields = {
     );
   },
 
-  textarea: ({ item, isEditMode }) => {
+  textArea: ({ item, isEditMode }) => {
     return (
       <Form.Item
         name={item.name}
@@ -342,7 +343,7 @@ const antdFields = {
 
   grid: ({ item, isEditMode }) => {
     return (
-      <Form.Item>
+      <Form.Item style={{ margin: 0 }}>
         <div style={{ width: item.config.width }}>
           <Row {...item.config}>
             {item.children.map((child, childIndex) => {
