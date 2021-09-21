@@ -8,7 +8,7 @@ const { SubMenu } = Menu;
 const { Header, Content, Sider } = Layout;
 const { Search } = Input;
 
-const getSubMenus = (menu) => {
+const getSubMenus = menu => {
   return menu.map((subMenu, subMenuIndex) => (
     <Menu.ItemGroup key={subMenuIndex} title={subMenu.title}>
       {subMenu.menuItems.map((menuItem, menuItemIndex) => (
@@ -20,26 +20,30 @@ const getSubMenus = (menu) => {
 
 export const Home = () => {
   const [form] = Form.useForm();
-  const [page, setPage] = useState("text");
+  const [page, setPage] = useState("arrayOfObjects");
 
   const onValuesChange = () => {};
   const onFinish = () => {};
 
+  const initValues = data.initialValues[page] || {};
+
   const formConfig = {
     fields: data.pages[page].fields,
+    aux: data.aux[page],
     isEditMode: true,
     form: {
       form,
       layout: "vertical",
       labelCol: { offset: 4, span: 16 },
       wrapperCol: { offset: 4, span: 16 },
-      initialValues: {},
-      onFinish,
-    },
+      initialValues: initValues,
+      onFinish
+    }
   };
 
-  const onMenuClick = (e) => {
+  const onMenuClick = e => {
     const pageName = e.key;
+    form.resetFields();
     setPage(pageName);
   };
 
@@ -57,7 +61,7 @@ export const Home = () => {
             overflow: "auto",
             height: "100vh",
             position: "fixed",
-            left: 0,
+            left: 0
           }}
         >
           <Menu
@@ -79,7 +83,7 @@ export const Home = () => {
               padding: 24,
               margin: 0,
               minHeight: 280,
-              width: "calc(100vw - 400px)",
+              width: "calc(100vw - 400px)"
             }}
           >
             <RenderForm formConfig={formConfig} />

@@ -1,4 +1,5 @@
 /* eslint-disable */
+import styles from "./styles.module.css";
 import React, { Fragment } from "react";
 import {
   Form,
@@ -19,18 +20,189 @@ import {
   Tabs,
   Typography,
   PageHeader,
-  Image,
+  Image
 } from "antd";
-import { get } from "lodash";
+import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
+import { forEach } from "lodash";
 
 const { Panel } = Collapse;
 const { TabPane } = Tabs;
 const { Search } = Input;
 const { Text, Title } = Typography;
 
+let aux;
+
 const antdFields = {
+  conditional: ({ item }) => {
+    if (typeof aux !== "object") {
+      return <p>Missing aux object</p>;
+    }
+
+    if (typeof aux[condition] === "function") {
+      return <p>Missing condition function</p>;
+    }
+
+    const { shouldUpdate, condition } = item;
+
+    const shouldUpdateFn =
+      typeof aux[shouldUpdate] === "function" ? aux[shouldUpdate] : true;
+
+    const conditionFn = aux[condition];
+
+    return (
+      <Form.Item shouldUpdate={shouldUpdateFn}>
+        {() => {
+          const conditionMet = conditionFn(item.form);
+          if (conditionMet) {
+            return item.children.map((child, i) => {
+              child.config = {
+                ...child.config,
+                disabled: item.config.disabled
+              };
+              child.form = item.form;
+
+              return <RenderField key={i} item={child} />;
+            });
+          } else {
+            return null;
+          }
+        }}
+      </Form.Item>
+    );
+  },
+
+  arrayOfValues: ({ item }) => {
+    return (
+      <Form.List name={item.name}>
+        {(fields, { add, remove }, { errors }) => (
+          <Fragment>
+            {fields.map((field, index) => (
+              <Form.Item
+                key={field.key}
+                label={index === 0 && item.label}
+                style={{ marginBottom: 0 }}
+              >
+                <Form.Item {...field} style={{ display: "inline-block" }}>
+                  <Input {...item.config} />
+                </Form.Item>
+
+                {fields.length > 1 && (
+                  <MinusCircleOutlined
+                    disabled={item.config.disabled}
+                    className={styles.dynamicDeleteButton}
+                    onClick={() => {
+                      !item.config.disabled && remove(field.name);
+                    }}
+                  />
+                )}
+              </Form.Item>
+            ))}
+            <Form.Item>
+              <Button
+                disabled={item.config.disabled}
+                type="dashed"
+                onClick={() => add()}
+                style={{ width: item.config.style.width }}
+                icon={<PlusOutlined />}
+              >
+                Add
+              </Button>
+            </Form.Item>
+          </Fragment>
+        )}
+      </Form.List>
+    );
+  },
+
+  arrayOfObjects: ({ item }) => {
+    const removeIcon = ({ field, item, remove }) => {
+      return (
+        <MinusCircleOutlined
+          disabled={item.config.disabled}
+          className={styles.dynamicDeleteButton}
+          style={{ top: 0 }}
+          onClick={event => {
+            event.stopPropagation();
+            !item.config.disabled && remove(field.name);
+          }}
+        />
+      );
+    };
+
+    return (
+      <Form.List name={item.name}>
+        {(fields, { add, remove }, { errors }) => (
+          <Fragment>
+            <Form.Item shouldUpdate={true}>
+              {() => (
+                <Collapse {...item.config}>
+                  {fields.map(field => {
+                    const header = item.form.getFieldValue([
+                      item.name,
+                      field.name,
+                      "name"
+                    ]);
+
+                    return (
+                      <Panel
+                        key={field.key}
+                        header={header}
+                        extra={removeIcon({ field, item, remove })}
+                      >
+                        {item.children.map((child, childIndex) => {
+                          child.config = {
+                            ...child.config,
+                            disabled: item.config.disabled
+                          };
+                          child = {
+                            ...child,
+                            ...field,
+                            name: [field.name, child.name],
+                            fieldKey: [field.fieldKey, child.name],
+                            form: item.form
+                          };
+
+                          return <RenderField key={childIndex} item={child} />;
+                        })}
+                      </Panel>
+                    );
+                  })}
+                </Collapse>
+              )}
+            </Form.Item>
+
+            <Form.Item>
+              <Button
+                {...item.config}
+                style={{ width: "100%" }}
+                type="dashed"
+                onClick={() => add()}
+                icon={<PlusOutlined />}
+              >
+                Add
+              </Button>
+            </Form.Item>
+          </Fragment>
+        )}
+      </Form.List>
+    );
+  },
+
+  showFields: ({ item }) => {
+    return (
+      <Form.Item shouldUpdate label={item.label}>
+        {() => <pre>{JSON.stringify(item.form.getFieldsValue(), null, 2)}</pre>}
+      </Form.Item>
+    );
+  },
+
+  pre: ({ item }) => {
+    return <pre {...item.config}>{item.label}</pre>;
+  },
+
   json: ({ item }) => {
-    const hasConfig = item.data.config && Object.keys(item.data.config).length === 0;
+    const hasConfig =
+      item.data.config && Object.keys(item.data.config).length === 0;
     if (hasConfig) delete item.data.config;
     const json = JSON.stringify(item.data, null, 2);
     return (
@@ -40,15 +212,15 @@ const antdFields = {
     );
   },
 
-  verticalSpace: ({ item, isEditMode }) => {
+  verticalSpace: ({ item }) => {
     return <div direction="vertical" style={{ height: item.height }}></div>;
   },
 
-  divider: ({ item, isEditMode }) => {
+  divider: ({ item }) => {
     return <Divider {...item.config}>{item.label}</Divider>;
   },
 
-  card: ({ item, isEditMode }) => {
+  card: ({ item }) => {
     return (
       <Card {...item.config} bordered={false}>
         {item.children.map((item, i) => {
@@ -58,36 +230,54 @@ const antdFields = {
     );
   },
 
-  collapse: ({ item, isEditMode }) => {
-    // the div is there because collapse will not accept data-test-id attribute
+  collapse: ({ item }) => {
     return (
-      <div data-test-id={item.config["data-test-id"]}>
-        <Collapse {...item.config}>
-          {item.children.map((child, i) => {
-            const childDataId = `${item.name}-panel${i}-${child.content.type}`;
-            if (!child.content.config) child.content.config = {};
-            child.content.name = childDataId;
-            child.content.config["data-test-id"] = childDataId;
+      <Form.Item shouldUpdate={true} data-test-id={item.config["data-test-id"]}>
+        {() => {
+          return (
+            <Collapse {...item.config}>
+              {item.children.map((child, childIndex) => {
+                const childDataId = `${item.name}-panel${childIndex}-${child.content.type}`;
+                if (!child.content.config) child.content.config = {};
+                child.content.name = childDataId;
+                child.content.config["data-test-id"] = childDataId;
+                const header =
+                  item.form.getFieldValue([
+                    "events",
+                    childIndex,
+                    child.header
+                  ]) || "";
 
-            return (
-              <Panel key={`${item.name}-panel${i}`} header={child.header}>
-                <RenderField key={i} item={child.content} />
-              </Panel>
-            );
-          })}
-        </Collapse>
-      </div>
+                return (
+                  <Panel
+                    key={`${item.name}-panel${childIndex}`}
+                    forceRender
+                    header={header}
+                  >
+                    {child.content.map((content, contentIndex) => {
+                      content.name[1] = childIndex;
+                      return <RenderField key={contentIndex} item={content} />;
+                    })}
+                  </Panel>
+                );
+              })}
+            </Collapse>
+          );
+        }}
+      </Form.Item>
     );
   },
 
-  tabs: ({ item, isEditMode }) => {
+  tabs: ({ item }) => {
     return (
       <Tabs {...item.config} style={item.style}>
         {item.children.map((child, childIndex) => {
           const tabPaneKey = `${item.name}-tabPane-${childIndex}`;
           return (
             <TabPane key={tabPaneKey} tab={child.header}>
-              <RenderField item={child.content} />
+              {child.content.map((content, contentIndex) => {
+                return <RenderField key={contentIndex} item={content} />;
+              })}
             </TabPane>
           );
         })}
@@ -95,13 +285,15 @@ const antdFields = {
     );
   },
 
-  verticalTabs: ({ item, isEditMode }) => {
+  verticalTabs: ({ item }) => {
     return (
       <Tabs tabPosition="left" {...item.config} style={item.style}>
         {item.children.map((child, i) => {
           return (
             <TabPane tab={child.header} key={i}>
-              <RenderField item={child.content} />
+              {child.content.map((content, contentIndex) => {
+                return <RenderField key={contentIndex} item={content} />;
+              })}
             </TabPane>
           );
         })}
@@ -109,39 +301,45 @@ const antdFields = {
     );
   },
 
-  inlineGroup: ({ item, isEditMode }) => {
+  inlineGroup: ({ item }) => {
     return (
       <Space {...item.config} size="large">
         {item.children.map((item, i) => {
           const style = { display: "inline-block", margin: 0 };
-          return <RenderField key={`${item.name}-group-${i}`} item={{ ...item, style }} />;
+          return (
+            <RenderField
+              key={`${item.name}-group-${i}`}
+              item={{ ...item, style }}
+            />
+          );
         })}
       </Space>
     );
   },
 
-  inlineGroupRight: ({ item, isEditMode }) => {
+  inlineGroupRight: ({ item }) => {
     return (
       <div style={{ textAlign: "right" }}>
         <Space {...item.config} size="large">
           {item.children.map((item, i) => {
             const style = { display: "inline-block", margin: 0 };
-            return <RenderField key={`${item.name}-group-${i}`} item={{ ...item, style }} />;
+            return (
+              <RenderField
+                key={`${item.name}-group-${i}`}
+                item={{ ...item, style }}
+              />
+            );
           })}
         </Space>
       </div>
     );
   },
 
-  button: ({ item, isEditMode }) => {
-    return (
-      <Button {...item.config} disabled={!isEditMode}>
-        {item.label}
-      </Button>
-    );
+  button: ({ item }) => {
+    return <Button {...item.config}>{item.label}</Button>;
   },
 
-  radioButtonGroup: ({ item, isEditMode }) => {
+  radioButtonGroup: ({ item }) => {
     return (
       <Form.Item name={item.name} label={item.label} rules={item.rules}>
         <Radio.Group {...item.config}>
@@ -160,7 +358,7 @@ const antdFields = {
     );
   },
 
-  radioGroup: ({ item, isEditMode }) => {
+  radioGroup: ({ item }) => {
     return (
       <Form.Item name={item.name} label={item.label} rules={item.rules}>
         <Radio.Group {...item.config}>
@@ -179,10 +377,10 @@ const antdFields = {
     );
   },
 
-  yesNoRadioGroup: ({ item, isEditMode }) => {
+  yesNoRadioGroup: ({ item }) => {
     return (
       <Form.Item name={item.name} label={item.label} rules={item.rules}>
-        <Radio.Group {...item.config} disabled={!isEditMode}>
+        <Radio.Group {...item.config}>
           <Radio value={"yes"}>Yes</Radio>
           <Radio value={"no"}>No</Radio>
         </Radio.Group>
@@ -190,20 +388,20 @@ const antdFields = {
     );
   },
 
-  switch: ({ item, isEditMode }) => {
+  switch: ({ item }) => {
     return (
-      <Form.Item valuePropName="checked" name={item.name} label={item.label} rules={item.rules}>
-        <Switch
-          {...item.config}
-          disabled={!isEditMode}
-          checkedChildren="on"
-          unCheckedChildren="off"
-        />
+      <Form.Item
+        valuePropName="checked"
+        name={item.name}
+        label={item.label}
+        rules={item.rules}
+      >
+        <Switch {...item.config} checkedChildren="on" unCheckedChildren="off" />
       </Form.Item>
     );
   },
 
-  checkbox: ({ item, isEditMode }) => {
+  checkbox: ({ item }) => {
     return (
       <Form.Item
         name={item.name}
@@ -213,14 +411,12 @@ const antdFields = {
         rules={item.rules}
         style={{ marginBottom: 0 }}
       >
-        <Checkbox {...item.config} disabled={!isEditMode}>
-          {item.label}
-        </Checkbox>
+        <Checkbox {...item.config}>{item.label}</Checkbox>
       </Form.Item>
     );
   },
 
-  checkboxGroup: ({ item, isEditMode }) => {
+  checkboxGroup: ({ item }) => {
     return (
       <Form.Item
         name={item.name}
@@ -230,12 +426,12 @@ const antdFields = {
         rules={item.rules}
         style={{ marginBottom: 0 }}
       >
-        <Checkbox.Group {...item.config} options={item.options} disabled={!isEditMode} />
+        <Checkbox.Group {...item.config} options={item.options} />
       </Form.Item>
     );
   },
 
-  input: ({ item, isEditMode }) => {
+  input: ({ item }) => {
     return (
       <Form.Item
         name={item.name}
@@ -243,12 +439,12 @@ const antdFields = {
         rules={item.rules}
         style={{ width: item.width }}
       >
-        <Input {...item.config} disabled={!isEditMode} />
+        <Input {...item.config} />
       </Form.Item>
     );
   },
 
-  search: ({ item, isEditMode }) => {
+  search: ({ item }) => {
     return (
       <Form.Item
         name={item.name}
@@ -256,12 +452,12 @@ const antdFields = {
         rules={item.rules}
         style={{ width: item.width }}
       >
-        <Search {...item.config} allowClear disabled={!isEditMode} />
+        <Search {...item.config} allowClear />
       </Form.Item>
     );
   },
 
-  select: ({ item, isEditMode }) => {
+  select: ({ item }) => {
     return (
       <Form.Item
         name={item.name}
@@ -269,7 +465,7 @@ const antdFields = {
         rules={item.rules}
         style={{ width: item.width }}
       >
-        <Select {...item.config} disabled={!isEditMode}>
+        <Select {...item.config}>
           {item.options.map((option, i) => {
             const value = option.value || option.label || "";
             return (
@@ -283,7 +479,7 @@ const antdFields = {
     );
   },
 
-  multiSelect: ({ item, isEditMode }) => {
+  multiSelect: ({ item }) => {
     return (
       <Form.Item
         name={item.name}
@@ -291,11 +487,14 @@ const antdFields = {
         rules={item.rules}
         style={{ width: item.width }}
       >
-        <Select {...item.config} mode="multiple" allowClear={true} disabled={!isEditMode}>
+        <Select {...item.config} mode="multiple" allowClear={true}>
           {item.options.map((option, i) => {
             const value = option.value || option.label || "";
             return (
-              <Select.Option key={`${item.name}-multiSelect-${i}`} value={value}>
+              <Select.Option
+                key={`${item.name}-multiSelect-${i}`}
+                value={value}
+              >
                 {option.label}
               </Select.Option>
             );
@@ -305,7 +504,7 @@ const antdFields = {
     );
   },
 
-  textArea: ({ item, isEditMode }) => {
+  textArea: ({ item }) => {
     return (
       <Form.Item
         name={item.name}
@@ -313,21 +512,21 @@ const antdFields = {
         rules={item.rules}
         style={{ width: item.width }}
       >
-        <Input.TextArea {...item.config} disabled={!isEditMode} />
+        <Input.TextArea {...item.config} />
       </Form.Item>
     );
   },
 
-  date: ({ item, isEditMode }) => {
+  date: ({ item }) => {
     const dateFormatList = ["MM/DD/YYYY", "MM/DD/YY"];
     return (
       <Form.Item name={item.name} label={item.label}>
-        <DatePicker {...item.config} disabled={!isEditMode} format={dateFormatList} />
+        <DatePicker {...item.config} format={dateFormatList} />
       </Form.Item>
     );
   },
 
-  time: ({ item, isEditMode }) => {
+  time: ({ item }) => {
     return (
       <Form.Item name={item.name} label={item.label}>
         <TimePicker
@@ -335,13 +534,12 @@ const antdFields = {
           use12Hours
           minuteStep={15}
           format="h:mm a"
-          disabled={!isEditMode}
         />
       </Form.Item>
     );
   },
 
-  grid: ({ item, isEditMode }) => {
+  grid: ({ item }) => {
     return (
       <Form.Item style={{ margin: 0 }}>
         <div style={{ width: item.config.width }}>
@@ -353,6 +551,7 @@ const antdFields = {
               const childDataId = `${cellDataId}-${child.type}`;
               if (!child.config) child.config = {};
               child.name = child.name || childDataId;
+              child.form = item.form;
               child.config["data-test-id"] = child.name || childDataId;
 
               return (
@@ -367,22 +566,26 @@ const antdFields = {
     );
   },
 
-  title: ({ item, isEditMode }) => {
+  title: ({ item }) => {
     return <Title {...item.config}>{item.label}</Title>;
   },
 
-  text: ({ item, isEditMode }) => {
+  text: ({ item }) => {
     return <Text {...item.config}>{item.label}</Text>;
   },
 
-  pageHeader: ({ item, isEditMode }) => {
+  pageHeader: ({ item }) => {
     return <PageHeader {...item.config} />;
   },
 
-  image: ({ item, isEditMode }) => {
+  image: ({ item }) => {
     if (item.config.placeholderUrl) {
       item.config.placeholder = (
-        <Image preview={false} src={item.config.placeholderUrl} width={item.config.width} />
+        <Image
+          preview={false}
+          src={item.config.placeholderUrl}
+          width={item.config.width}
+        />
       );
       delete item.config.placeholderUrl;
     }
@@ -390,7 +593,7 @@ const antdFields = {
     return <Image {...item.config} />;
   },
 
-  imageGroup: ({ item, isEditMode }) => {
+  imageGroup: ({ item }) => {
     return (
       <Image.PreviewGroup>
         <Space size="large" {...item.config}>
@@ -402,41 +605,61 @@ const antdFields = {
     );
   },
 
-  default: ({ item, isEditMode }) => {
+  default: ({ item }) => {
     return (
       <Space size="small">
         <Text>{item.type}</Text>
         <Text>{item.label}</Text>
       </Space>
     );
-  },
+  }
 };
 
 const samsFields = {};
 
 const fields = { ...antdFields, ...samsFields };
 
-const RenderField = ({ isEditMode = true, item = {} }) => {
+const makeDataTestId = item => {
+  if (!item.config) item.config = {};
+  if (item.config["data-test-id"]) {
+    //
+  } else if (typeof item.name === "string") {
+    item.config["data-test-id"] = item.name;
+  } else if (Array.isArray(item.name)) {
+    item.config["data-test-id"] = item.name.join("-");
+  } else {
+    // console.log("STRANGE");
+  }
+};
+
+const RenderField = ({ item = {} }) => {
   if (!item.name) {
-    console.log("Warning: you're missing the name attribute: ", item);
+    // console.log("Warning: you're missing the name attribute: ", item);
     // throw new Error("Field is missing name attribute");
   }
-  if (!item.config) item.config = {};
-  item.config["data-test-id"] = item.config["data-test-id"] || item.name;
+
+  makeDataTestId(item);
 
   const Field = fields[item.type] || fields["default"];
 
-  return <Field item={item} isEditMode={isEditMode} />;
+  return <Field item={item} />;
 };
 
 export const RenderForm = ({ formConfig }) => {
-  const isEditMode = formConfig?.isEditMode;
+  const isEditMode = !!formConfig.isEditMode;
+  aux = formConfig.aux;
 
   return (
-    <Form {...formConfig.form}>
+    <Form {...formConfig.form} autoComplete="off">
       <Space direction="vertical" size="small" style={{ width: "100%" }}>
         {formConfig.fields.map((item, i) => {
-          return <RenderField key={`form-${i}`} item={item} isEditMode={isEditMode} />;
+          item.form = formConfig.form.form;
+          if (!item.config) item.config == {};
+          item.config = {
+            ...item.config,
+            disabled: !formConfig.isEditMode
+          };
+          return <RenderField key={`form-${i}`} item={item} />;
         })}
       </Space>
     </Form>
