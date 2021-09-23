@@ -20,7 +20,7 @@ import {
   Tabs,
   Typography,
   PageHeader,
-  Image
+  Image,
 } from "antd";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { forEach } from "lodash";
@@ -33,6 +33,16 @@ const { Text, Title } = Typography;
 let aux;
 
 const antdFields = {
+  inline: ({ item }) => {
+    return (
+      <Space style={{ display: "flex", marginBottom: 8 }} align="baseline">
+        {item.children.map((child, childIndex) => {
+          return <RenderField key={childIndex + 2} item={child} />;
+        })}
+      </Space>
+    );
+  },
+
   conditional: ({ item }) => {
     if (typeof aux !== "object") {
       return <p>Missing aux object</p>;
@@ -44,8 +54,7 @@ const antdFields = {
 
     const { shouldUpdate, condition } = item;
 
-    const shouldUpdateFn =
-      typeof aux[shouldUpdate] === "function" ? aux[shouldUpdate] : true;
+    const shouldUpdateFn = typeof aux[shouldUpdate] === "function" ? aux[shouldUpdate] : true;
 
     const conditionFn = aux[condition];
 
@@ -57,7 +66,7 @@ const antdFields = {
             return item.children.map((child, i) => {
               child.config = {
                 ...child.config,
-                disabled: item.config.disabled
+                disabled: item.config.disabled,
               };
               child.form = item.form;
 
@@ -121,12 +130,26 @@ const antdFields = {
           disabled={item.config.disabled}
           className={styles.dynamicDeleteButton}
           style={{ top: 0 }}
-          onClick={event => {
+          onClick={(event) => {
             event.stopPropagation();
             !item.config.disabled && remove(field.name);
           }}
         />
       );
+    };
+
+    const superCharge = (item, child, field) => {
+      return {
+        ...child,
+        ...field,
+        name: [field.name, child.name],
+        fieldKey: [field.fieldKey, child.name],
+        form: item.form,
+        config: {
+          ...child.config,
+          disabled: item.config.disabled,
+        },
+      };
     };
 
     return (
@@ -136,12 +159,8 @@ const antdFields = {
             <Form.Item shouldUpdate={true}>
               {() => (
                 <Collapse {...item.config}>
-                  {fields.map(field => {
-                    const header = item.form.getFieldValue([
-                      item.name,
-                      field.name,
-                      "name"
-                    ]);
+                  {fields.map((field) => {
+                    const header = item.form.getFieldValue([item.name, field.name, "name"]);
 
                     return (
                       <Panel
@@ -150,17 +169,13 @@ const antdFields = {
                         extra={removeIcon({ field, item, remove })}
                       >
                         {item.children.map((child, childIndex) => {
-                          child.config = {
-                            ...child.config,
-                            disabled: item.config.disabled
-                          };
-                          child = {
-                            ...child,
-                            ...field,
-                            name: [field.name, child.name],
-                            fieldKey: [field.fieldKey, child.name],
-                            form: item.form
-                          };
+                          if (child.type === "inline") {
+                            child.children.forEach((grandChild) => {
+                              grandChild = superCharge(item, grandChild, field);
+                              console.log("grandChild: ", grandChild);
+                            });
+                          }
+                          child = superCharge(item, child, field);
 
                           return <RenderField key={childIndex} item={child} />;
                         })}
@@ -201,8 +216,7 @@ const antdFields = {
   },
 
   json: ({ item }) => {
-    const hasConfig =
-      item.data.config && Object.keys(item.data.config).length === 0;
+    const hasConfig = item.data.config && Object.keys(item.data.config).length === 0;
     if (hasConfig) delete item.data.config;
     const json = JSON.stringify(item.data, null, 2);
     return (
@@ -223,8 +237,14 @@ const antdFields = {
   card: ({ item }) => {
     return (
       <Card {...item.config} bordered={false}>
-        {item.children.map((item, i) => {
-          return <RenderField key={i} item={item} />;
+        {item.children.map((child, childIndex) => {
+          if (!child.config) child.config = {};
+          child.config = {
+            ...child.config,
+            disabled: item.config.disabled,
+          };
+
+          return <RenderField key={childIndex} item={child} />;
         })}
       </Card>
     );
@@ -241,21 +261,18 @@ const antdFields = {
                 if (!child.content.config) child.content.config = {};
                 child.content.name = childDataId;
                 child.content.config["data-test-id"] = childDataId;
-                const header =
-                  item.form.getFieldValue([
-                    "events",
-                    childIndex,
-                    child.header
-                  ]) || "";
+                const header = item.form.getFieldValue(["events", childIndex, child.header]) || "";
 
                 return (
-                  <Panel
-                    key={`${item.name}-panel${childIndex}`}
-                    forceRender
-                    header={header}
-                  >
+                  <Panel key={`${item.name}-panel${childIndex}`} forceRender header={header}>
                     {child.content.map((content, contentIndex) => {
                       content.name[1] = childIndex;
+                      if (!content.config) content.config = {};
+                      content.config = {
+                        ...content.config,
+                        disabled: item.config.disabled,
+                      };
+
                       return <RenderField key={contentIndex} item={content} />;
                     })}
                   </Panel>
@@ -276,6 +293,12 @@ const antdFields = {
           return (
             <TabPane key={tabPaneKey} tab={child.header}>
               {child.content.map((content, contentIndex) => {
+                if (!content.config) content.config = {};
+                content.config = {
+                  ...content.config,
+                  disabled: item.config.disabled,
+                };
+
                 return <RenderField key={contentIndex} item={content} />;
               })}
             </TabPane>
@@ -292,6 +315,12 @@ const antdFields = {
           return (
             <TabPane tab={child.header} key={i}>
               {child.content.map((content, contentIndex) => {
+                if (!content.config) content.config = {};
+                content.config = {
+                  ...content.config,
+                  disabled: item.config.disabled,
+                };
+
                 return <RenderField key={contentIndex} item={content} />;
               })}
             </TabPane>
@@ -304,13 +333,16 @@ const antdFields = {
   inlineGroup: ({ item }) => {
     return (
       <Space {...item.config} size="large">
-        {item.children.map((item, i) => {
+        {item.children.map((child, childIndex) => {
+          if (!child.config) child.config = {};
+          child.config = {
+            ...child.config,
+            disabled: item.config.disabled,
+          };
+
           const style = { display: "inline-block", margin: 0 };
           return (
-            <RenderField
-              key={`${item.name}-group-${i}`}
-              item={{ ...item, style }}
-            />
+            <RenderField key={`${item.name}-group-${childIndex}`} item={{ ...child, style }} />
           );
         })}
       </Space>
@@ -321,13 +353,16 @@ const antdFields = {
     return (
       <div style={{ textAlign: "right" }}>
         <Space {...item.config} size="large">
-          {item.children.map((item, i) => {
+          {item.children.map((child, childIndex) => {
+            if (!child.config) child.config = {};
+            child.config = {
+              ...child.config,
+              disabled: item.config.disabled,
+            };
+
             const style = { display: "inline-block", margin: 0 };
             return (
-              <RenderField
-                key={`${item.name}-group-${i}`}
-                item={{ ...item, style }}
-              />
+              <RenderField key={`${item.name}-group-${childIndex}`} item={{ ...child, style }} />
             );
           })}
         </Space>
@@ -390,12 +425,7 @@ const antdFields = {
 
   switch: ({ item }) => {
     return (
-      <Form.Item
-        valuePropName="checked"
-        name={item.name}
-        label={item.label}
-        rules={item.rules}
-      >
+      <Form.Item valuePropName="checked" name={item.name} label={item.label} rules={item.rules}>
         <Switch {...item.config} checkedChildren="on" unCheckedChildren="off" />
       </Form.Item>
     );
@@ -491,10 +521,7 @@ const antdFields = {
           {item.options.map((option, i) => {
             const value = option.value || option.label || "";
             return (
-              <Select.Option
-                key={`${item.name}-multiSelect-${i}`}
-                value={value}
-              >
+              <Select.Option key={`${item.name}-multiSelect-${i}`} value={value}>
                 {option.label}
               </Select.Option>
             );
@@ -529,40 +556,39 @@ const antdFields = {
   time: ({ item }) => {
     return (
       <Form.Item name={item.name} label={item.label}>
-        <TimePicker
-          {...item.config}
-          use12Hours
-          minuteStep={15}
-          format="h:mm a"
-        />
+        <TimePicker {...item.config} use12Hours minuteStep={15} format="h:mm a" />
       </Form.Item>
     );
   },
 
   grid: ({ item }) => {
     return (
-      <Form.Item style={{ margin: 0 }}>
-        <div style={{ width: item.config.width }}>
-          <Row {...item.config}>
-            {item.children.map((child, childIndex) => {
-              const col = childIndex % item.config.cols;
-              const span = item.config.spans[col];
-              const cellDataId = `${item.name}-cell${childIndex}`;
-              const childDataId = `${cellDataId}-${child.type}`;
-              if (!child.config) child.config = {};
-              child.name = child.name || childDataId;
-              child.form = item.form;
-              child.config["data-test-id"] = child.name || childDataId;
+      // <Form.Item style={{ margin: 0 }}>
+      <div style={{ width: item.config.width }}>
+        <Row {...item.config}>
+          {item.children.map((child, childIndex) => {
+            const col = childIndex % item.config.cols;
+            const span = item.config.spans[col];
+            const cellDataId = `${item.name}-cell${childIndex}`;
+            const childDataId = `${cellDataId}-${child.type}`;
+            child.name = child.name || childDataId;
+            child.form = item.form;
+            if (!child.config) child.config = {};
+            child.config = {
+              ...child.config,
+              ["data-test-id"]: child.name || childDataId,
+              disabled: item.config.disabled,
+            };
 
-              return (
-                <Col data-test-id={cellDataId} key={cellDataId} span={span}>
-                  <RenderField item={child} />
-                </Col>
-              );
-            })}
-          </Row>
-        </div>
-      </Form.Item>
+            return (
+              <Col data-test-id={cellDataId} key={cellDataId} span={span}>
+                <RenderField item={child} />
+              </Col>
+            );
+          })}
+        </Row>
+      </div>
+      // </Form.Item>
     );
   },
 
@@ -581,11 +607,7 @@ const antdFields = {
   image: ({ item }) => {
     if (item.config.placeholderUrl) {
       item.config.placeholder = (
-        <Image
-          preview={false}
-          src={item.config.placeholderUrl}
-          width={item.config.width}
-        />
+        <Image preview={false} src={item.config.placeholderUrl} width={item.config.width} />
       );
       delete item.config.placeholderUrl;
     }
@@ -612,14 +634,14 @@ const antdFields = {
         <Text>{item.label}</Text>
       </Space>
     );
-  }
+  },
 };
 
 const samsFields = {};
 
 const fields = { ...antdFields, ...samsFields };
 
-const makeDataTestId = item => {
+const makeDataTestId = (item) => {
   if (!item.config) item.config = {};
   if (item.config["data-test-id"]) {
     //
@@ -650,14 +672,14 @@ export const RenderForm = ({ formConfig }) => {
   aux = formConfig.aux;
 
   return (
-    <Form {...formConfig.form} autoComplete="off">
+    <Form {...formConfig.form}>
       <Space direction="vertical" size="small" style={{ width: "100%" }}>
         {formConfig.fields.map((item, i) => {
           item.form = formConfig.form.form;
           if (!item.config) item.config == {};
           item.config = {
             ...item.config,
-            disabled: !formConfig.isEditMode
+            disabled: !formConfig.isEditMode,
           };
           return <RenderField key={`form-${i}`} item={item} />;
         })}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Form, Layout, Menu, Breadcrumb, Typography, Input } from "antd";
+import { Form, Layout, Menu, Button, Typography, Input } from "antd";
 import { data } from "./helper";
 import { RenderForm } from "..";
 
@@ -8,7 +8,7 @@ const { SubMenu } = Menu;
 const { Header, Content, Sider } = Layout;
 const { Search } = Input;
 
-const getSubMenus = menu => {
+const getSubMenus = (menu) => {
   return menu.map((subMenu, subMenuIndex) => (
     <Menu.ItemGroup key={subMenuIndex} title={subMenu.title}>
       {subMenu.menuItems.map((menuItem, menuItemIndex) => (
@@ -21,6 +21,7 @@ const getSubMenus = menu => {
 export const Home = () => {
   const [form] = Form.useForm();
   const [page, setPage] = useState("arrayOfObjects");
+  const [isEditMode, setIsEditMode] = useState(true);
 
   const onValuesChange = () => {};
   const onFinish = () => {};
@@ -30,18 +31,19 @@ export const Home = () => {
   const formConfig = {
     fields: data.pages[page].fields,
     aux: data.aux[page],
-    isEditMode: true,
+    isEditMode,
     form: {
       form,
       layout: "vertical",
       labelCol: { offset: 4, span: 16 },
       wrapperCol: { offset: 4, span: 16 },
       initialValues: initValues,
-      onFinish
-    }
+      onFinish,
+      autoComplete: "off",
+    },
   };
 
-  const onMenuClick = e => {
+  const onMenuClick = (e) => {
     const pageName = e.key;
     form.resetFields();
     setPage(pageName);
@@ -61,7 +63,7 @@ export const Home = () => {
             overflow: "auto",
             height: "100vh",
             position: "fixed",
-            left: 0
+            left: 0,
           }}
         >
           <Menu
@@ -83,9 +85,14 @@ export const Home = () => {
               padding: 24,
               margin: 0,
               minHeight: 280,
-              width: "calc(100vw - 400px)"
+              width: "calc(100vw - 400px)",
             }}
           >
+            <Button onClick={() => setIsEditMode(!isEditMode)}>
+              {isEditMode ? "edit on" : "edit off"}
+            </Button>
+            <br />
+            <br />
             <RenderForm formConfig={formConfig} />
           </Content>
         </Layout>
