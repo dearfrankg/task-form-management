@@ -546,7 +546,7 @@ export const data = {
       );
 
       return {
-        fields: [get.title("Grid"), get.demoComponent(grid)],
+        fields: [get.title("Grid"), get.demoFormComponent(grid)],
       };
     })(),
 

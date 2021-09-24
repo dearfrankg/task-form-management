@@ -30,7 +30,7 @@ const { TabPane } = Tabs;
 const { Search } = Input;
 const { Text, Title } = Typography;
 
-let aux;
+let myFormConfig;
 
 const antdFields = {
   inline: ({ item }) => {
@@ -44,6 +44,8 @@ const antdFields = {
   },
 
   conditional: ({ item }) => {
+    const { aux } = myFormConfig;
+
     if (typeof aux !== "object") {
       return <p>Missing aux object</p>;
     }
@@ -172,7 +174,7 @@ const antdFields = {
                           if (child.type === "inline") {
                             child.children.forEach((grandChild) => {
                               grandChild = superCharge(item, grandChild, field);
-                              console.log("grandChild: ", grandChild);
+                              // console.log("grandChild: ", grandChild);
                             });
                           }
                           child = superCharge(item, child, field);
@@ -238,12 +240,6 @@ const antdFields = {
     return (
       <Card {...item.config} bordered={false}>
         {item.children.map((child, childIndex) => {
-          if (!child.config) child.config = {};
-          child.config = {
-            ...child.config,
-            disabled: item.config.disabled,
-          };
-
           return <RenderField key={childIndex} item={child} />;
         })}
       </Card>
@@ -251,27 +247,27 @@ const antdFields = {
   },
 
   collapse: ({ item }) => {
+    const setChildContent = (child, childIndex) => {
+      if (!child.content.config) child.content.config = {};
+      const childDataId = `${item.name}-panel${childIndex}-${child.content.type}`;
+      child.content.config["data-test-id"] = childDataId;
+      child.content.name = childDataId;
+    };
+
     return (
       <Form.Item shouldUpdate={true} data-test-id={item.config["data-test-id"]}>
         {() => {
           return (
             <Collapse {...item.config}>
               {item.children.map((child, childIndex) => {
-                const childDataId = `${item.name}-panel${childIndex}-${child.content.type}`;
-                if (!child.content.config) child.content.config = {};
-                child.content.name = childDataId;
-                child.content.config["data-test-id"] = childDataId;
                 const header = item.form.getFieldValue(["events", childIndex, child.header]) || "";
+                setChildContent(child, childIndex);
 
                 return (
                   <Panel key={`${item.name}-panel${childIndex}`} forceRender header={header}>
                     {child.content.map((content, contentIndex) => {
+                      // expecting name to be an array?
                       content.name[1] = childIndex;
-                      if (!content.config) content.config = {};
-                      content.config = {
-                        ...content.config,
-                        disabled: item.config.disabled,
-                      };
 
                       return <RenderField key={contentIndex} item={content} />;
                     })}
@@ -293,12 +289,6 @@ const antdFields = {
           return (
             <TabPane key={tabPaneKey} tab={child.header}>
               {child.content.map((content, contentIndex) => {
-                if (!content.config) content.config = {};
-                content.config = {
-                  ...content.config,
-                  disabled: item.config.disabled,
-                };
-
                 return <RenderField key={contentIndex} item={content} />;
               })}
             </TabPane>
@@ -315,12 +305,6 @@ const antdFields = {
           return (
             <TabPane tab={child.header} key={i}>
               {child.content.map((content, contentIndex) => {
-                if (!content.config) content.config = {};
-                content.config = {
-                  ...content.config,
-                  disabled: item.config.disabled,
-                };
-
                 return <RenderField key={contentIndex} item={content} />;
               })}
             </TabPane>
@@ -334,12 +318,6 @@ const antdFields = {
     return (
       <Space {...item.config} size="large">
         {item.children.map((child, childIndex) => {
-          if (!child.config) child.config = {};
-          child.config = {
-            ...child.config,
-            disabled: item.config.disabled,
-          };
-
           const style = { display: "inline-block", margin: 0 };
           return (
             <RenderField key={`${item.name}-group-${childIndex}`} item={{ ...child, style }} />
@@ -354,12 +332,6 @@ const antdFields = {
       <div style={{ textAlign: "right" }}>
         <Space {...item.config} size="large">
           {item.children.map((child, childIndex) => {
-            if (!child.config) child.config = {};
-            child.config = {
-              ...child.config,
-              disabled: item.config.disabled,
-            };
-
             const style = { display: "inline-block", margin: 0 };
             return (
               <RenderField key={`${item.name}-group-${childIndex}`} item={{ ...child, style }} />
@@ -641,46 +613,37 @@ const samsFields = {};
 
 const fields = { ...antdFields, ...samsFields };
 
-const makeDataTestId = (item) => {
+const setFieldConfig = (item) => {
   if (!item.config) item.config = {};
-  if (item.config["data-test-id"]) {
-    //
-  } else if (typeof item.name === "string") {
-    item.config["data-test-id"] = item.name;
-  } else if (Array.isArray(item.name)) {
-    item.config["data-test-id"] = item.name.join("-");
-  } else {
-    // console.log("STRANGE");
-  }
+
+  // set data-test-id
+  item.config["data-test-id"] = item.config["data-test-id"]
+    ? item.config["data-test-id"]
+    : typeof item.name === "string"
+    ? item.name
+    : Array.isArray(item.name)
+    ? item.name.join("-")
+    : "error";
+
+  // set disabled
+  item.config.disabled = !myFormConfig.isEditMode;
 };
 
 const RenderField = ({ item = {} }) => {
-  if (!item.name) {
-    // console.log("Warning: you're missing the name attribute: ", item);
-    // throw new Error("Field is missing name attribute");
-  }
-
-  makeDataTestId(item);
-
+  setFieldConfig(item);
   const Field = fields[item.type] || fields["default"];
 
   return <Field item={item} />;
 };
 
 export const RenderForm = ({ formConfig }) => {
-  const isEditMode = !!formConfig.isEditMode;
-  aux = formConfig.aux;
+  myFormConfig = formConfig;
 
   return (
     <Form {...formConfig.form}>
       <Space direction="vertical" size="small" style={{ width: "100%" }}>
         {formConfig.fields.map((item, i) => {
           item.form = formConfig.form.form;
-          if (!item.config) item.config == {};
-          item.config = {
-            ...item.config,
-            disabled: !formConfig.isEditMode,
-          };
           return <RenderField key={`form-${i}`} item={item} />;
         })}
       </Space>
