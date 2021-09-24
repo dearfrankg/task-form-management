@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Form, Layout, Menu, Button, Typography, Input } from "antd";
+import { Form, Layout, Menu, Button, Typography, Input, Switch } from "antd";
 import { data } from "./helper";
 import { RenderForm } from "..";
 
@@ -88,11 +88,14 @@ export const Home = () => {
               width: "calc(100vw - 400px)",
             }}
           >
-            <Button onClick={() => setIsEditMode(!isEditMode)}>
-              {isEditMode ? "edit on" : "edit off"}
-            </Button>
-            <br />
-            <br />
+            <Form.Item label="Edit Mode">
+              <Switch
+                checkedChildren="on"
+                unCheckedChildren="off"
+                defaultChecked
+                onClick={() => setIsEditMode(!isEditMode)}
+              />
+            </Form.Item>
             <RenderForm formConfig={formConfig} />
           </Content>
         </Layout>
