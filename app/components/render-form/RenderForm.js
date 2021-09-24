@@ -535,8 +535,7 @@ const antdFields = {
 
   grid: ({ item }) => {
     return (
-      // <Form.Item style={{ margin: 0 }}>
-      <div style={{ width: item.config.width }}>
+      <Form.Item style={{ margin: 0 }}>
         <Row {...item.config}>
           {item.children.map((child, childIndex) => {
             const col = childIndex % item.config.cols;
@@ -559,8 +558,7 @@ const antdFields = {
             );
           })}
         </Row>
-      </div>
-      // </Form.Item>
+      </Form.Item>
     );
   },
 
