@@ -182,7 +182,27 @@ const antdFields = {
   },
 
   arrayOfObjects: ({ item }) => {
-    const removeIcon = ({ field, item, remove }) => {
+    const addBtn = () => {
+      if (item.disableAddRemove) return null;
+
+      return (
+        <Form.Item>
+          <Button
+            {...item.config}
+            style={{ width: "100%" }}
+            type="dashed"
+            onClick={() => add()}
+            icon={<PlusOutlined />}
+          >
+            Add
+          </Button>
+        </Form.Item>
+      );
+    };
+
+    const removeBtn = ({ field, item, remove }) => {
+      if (item.disableAddRemove) return null;
+
       return (
         <MinusCircleOutlined
           disabled={item.config.disabled}
@@ -227,7 +247,7 @@ const antdFields = {
                       <Panel
                         key={field.key}
                         header={header}
-                        extra={removeIcon({ field, item, remove })}
+                        extra={removeBtn({ field, item, remove })}
                       >
                         {item.children.map((child, childIndex) => {
                           if (child.type === "inline") {
@@ -246,18 +266,7 @@ const antdFields = {
                 </Collapse>
               )}
             </Form.Item>
-
-            <Form.Item>
-              <Button
-                {...item.config}
-                style={{ width: "100%" }}
-                type="dashed"
-                onClick={() => add()}
-                icon={<PlusOutlined />}
-              >
-                Add
-              </Button>
-            </Form.Item>
+            {addBtn()}
           </Fragment>
         )}
       </Form.List>

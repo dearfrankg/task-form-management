@@ -8,7 +8,7 @@ const { SubMenu } = Menu;
 const { Header, Content, Sider } = Layout;
 const { Search } = Input;
 
-const getSubMenus = (menu) => {
+const getSubMenus = menu => {
   return menu.map((subMenu, subMenuIndex) => (
     <Menu.ItemGroup key={subMenuIndex} title={subMenu.title}>
       {subMenu.menuItems.map((menuItem, menuItemIndex) => (
@@ -39,11 +39,11 @@ export const Home = () => {
       wrapperCol: { offset: 4, span: 16 },
       initialValues: initValues,
       onFinish,
-      autoComplete: "off",
-    },
+      autoComplete: "off"
+    }
   };
 
-  const onMenuClick = (e) => {
+  const onMenuClick = e => {
     const pageName = e.key;
     form.resetFields();
     setPage(pageName);
@@ -63,7 +63,7 @@ export const Home = () => {
             overflow: "auto",
             height: "100vh",
             position: "fixed",
-            left: 0,
+            left: 0
           }}
         >
           <Menu
@@ -85,7 +85,7 @@ export const Home = () => {
               padding: 24,
               margin: 0,
               minHeight: 280,
-              width: "calc(100vw - 400px)",
+              width: "calc(100vw - 400px)"
             }}
           >
             <Form.Item label="Edit Mode">

@@ -207,9 +207,10 @@ const get = {
     config
   }),
 
-  arrayOfObjects: (name, config, children) => ({
+  arrayOfObjects: (name, header, config, children) => ({
     type: "arrayOfObjects",
     name,
+    header,
     config,
     children
   }),
@@ -289,7 +290,7 @@ export const data = {
     },
     {
       title: "Complete Examples",
-      menuItems: ["example1", "example2"]
+      menuItems: ["example1", "example2", "example3"]
     }
   ],
   pages: {
@@ -676,7 +677,7 @@ export const data = {
       fields: [
         get.title("Array of Objects"),
         get.demoFormComponent(
-          get.arrayOfObjects("events", { accordion: "true" }, [
+          get.arrayOfObjects("events", "name", { accordion: "true" }, [
             get.input("name", "Name"),
             get.input("address", "Address"),
             get.inline([get.input("one", "One"), get.input("two", "Two")])
@@ -768,7 +769,7 @@ See antd form api docs.
 
       return {
         fields: [
-          get.title("Conditional with select"),
+          get.title("Show form when select option selected"),
           select,
           conditional,
           get.grid(
@@ -807,7 +808,7 @@ See antd form api docs.
 
       */
 
-      const comment = `
+      const message = `
     {
       myUpdateFn: (prevValues, curValues) =>
         prevValues.services !== curValues.services,
@@ -825,8 +826,8 @@ See antd form api docs.
             [0, 0],
             [
               { type: "text", label: serviceName },
-              { type: "date", name: '{serviceName}-startDate' },
-              { type: "time", name: '{serviceName}-endDate' }
+              { type: "date", name: \`\${serviceName}-startDate\` },
+              { type: "time", name: \`\${serviceName}-endDate\` }
             ]
           );
 
@@ -835,6 +836,12 @@ See antd form api docs.
       }
     }
     `;
+
+      const comment = {
+        type: "pre",
+        label: message,
+        config: { style: { fontSize: "0.7rem" } }
+      };
 
       const select = get.multiSelect(
         "services",
@@ -862,33 +869,119 @@ See antd form api docs.
         "myWhenConditionFn"
       );
 
-      const aux = {
-        type: "pre",
-        label: comment,
-        config: { style: { fontSize: "0.7rem" } }
-      };
+      const jsonGrid = get.grid(
+        "grid1",
+        [12, 12],
+        [0, 0],
+        [get.json(select), get.json(conditional)]
+      );
 
       return {
         fields: [
-          get.title("Array of possibilities"),
+          get.title("Use multi-select to add/remove forms"),
           select,
           conditional,
           get.showFields(),
-          aux,
+          comment,
+          jsonGrid
+        ]
+      };
+    })(),
 
-          get.grid(
-            "grid1",
-            [12, 12],
-            [0, 0],
-            [
-              get.grid(
-                "grid2",
-                [24],
-                [0, 0],
-                [get.json(select), get.json(conditional)]
-              )
-            ]
-          )
+    example3: (() => {
+      /*
+         GAME PLAN 
+
+            1. multi-select 
+              - controls add/remove of collapse sections
+            2. condition 
+                - shouldUpdate
+                  - when services multi-select changes
+                - condition
+                  - when services array is not empty
+                - whenCondition 
+                  - populate services collection (array of objects) with only name
+                  - render arrayOfCollapseSections without add/remove buttons
+
+      */
+
+      const message = `
+    {
+      myUpdateFn: (prevValues, curValues) =>
+        prevValues.servicesPicker !== curValues.servicesPicker,
+
+      myConditionFn: ({ getFieldValue }) => true,
+
+      myWhenConditionFn: ({ getFieldValue, setFieldsValue }) => {
+        const services = getFieldValue("servicesPicker");
+        if (!services) return null;
+
+        const servicesData = [];
+        services.forEach(serviceName =>
+          servicesData.push({ name: serviceName })
+        );
+        setFieldsValue({ services: servicesData });
+
+        return null;
+      }
+    }
+    `;
+
+      const comment = {
+        type: "pre",
+        label: message,
+        config: { style: { fontSize: "0.7rem" } }
+      };
+
+      const select = get.multiSelect(
+        "servicesPicker",
+        "Services Picker",
+        [
+          { label: "Optometrist" },
+          { label: "Hearing Aids" },
+          { label: "Bakery" },
+          { label: "Tires" },
+          { label: "Pharmacy" }
+        ],
+        { allowClear: true }
+      );
+
+      const arrayOfObjects = get.arrayOfObjects(
+        "services",
+        "name",
+        { accordion: "true" },
+        [
+          get.input("name", "Name"),
+          get.input("address", "Address"),
+          get.inline([get.input("one", "One"), get.input("two", "Two")])
+        ]
+      );
+      arrayOfObjects.disableAddRemove = true;
+
+      const conditional = get.conditional(
+        "conditional",
+        "myUpdateFn",
+        "myConditionFn",
+        [],
+        "myWhenConditionFn"
+      );
+
+      const jsonGrid = get.grid(
+        "grid1",
+        [12, 12],
+        [0, 0],
+        [get.json(select), get.json(arrayOfObjects), get.json(conditional)]
+      );
+
+      return {
+        fields: [
+          get.title("Use multi-select to add/remove collapsable forms"),
+          select,
+          arrayOfObjects,
+          conditional,
+          get.showFields(),
+          comment,
+          jsonGrid
         ]
       };
     })()
@@ -915,7 +1008,6 @@ See antd form api docs.
 
       myWhenConditionFn: ({ getFieldValue }, RenderField) => {
         const services = getFieldValue("services");
-        console.log("services: ", services);
 
         return services.map((serviceName, serviceIndex) => {
           const child = get.grid(
@@ -931,6 +1023,25 @@ See antd form api docs.
 
           return <RenderField key={serviceIndex} item={child} />;
         });
+      }
+    },
+    example3: {
+      myUpdateFn: (prevValues, curValues) =>
+        prevValues.servicesPicker !== curValues.servicesPicker,
+
+      myConditionFn: ({ getFieldValue }) => true,
+
+      myWhenConditionFn: ({ getFieldValue, setFieldsValue }) => {
+        const services = getFieldValue("servicesPicker");
+        if (!services) return null;
+
+        const servicesData = [];
+        services.forEach(serviceName =>
+          servicesData.push({ name: serviceName })
+        );
+        setFieldsValue({ services: servicesData });
+
+        return null;
       }
     }
   },
