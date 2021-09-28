@@ -826,7 +826,7 @@ See antd form api docs.
             [
               { type: "text", label: serviceName },
               { type: "date", name: '{serviceName}-startDate' },
-              { type: "time", name: '{ serviceName } -endDate' }
+              { type: "time", name: '{serviceName}-endDate' }
             ]
           );
 
