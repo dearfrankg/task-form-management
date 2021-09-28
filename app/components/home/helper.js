@@ -913,14 +913,20 @@ See antd form api docs.
       myConditionFn: ({ getFieldValue }) => true,
 
       myWhenConditionFn: ({ getFieldValue, setFieldsValue }) => {
-        const services = getFieldValue("servicesPicker");
-        if (!services) return null;
+        const servicesPicked = getFieldValue("servicesPicker");
+        if (!servicesPicked) {
+          setFieldsValue({ services: [] });
+          return null;
+        }
 
-        const servicesData = [];
-        services.forEach(serviceName =>
-          servicesData.push({ name: serviceName })
-        );
-        setFieldsValue({ services: servicesData });
+        const existingServices = getFieldValue("services") || [];
+        const newServices = [];
+
+        servicesPicked.forEach(serviceName => {
+          const form = existingServices.find(obj => obj.name === serviceName);
+          newServices.push(form || { name: serviceName });
+        });
+        setFieldsValue({ services: newServices });
 
         return null;
       }
@@ -1032,14 +1038,20 @@ See antd form api docs.
       myConditionFn: ({ getFieldValue }) => true,
 
       myWhenConditionFn: ({ getFieldValue, setFieldsValue }) => {
-        const services = getFieldValue("servicesPicker");
-        if (!services) return null;
+        const servicesPicked = getFieldValue("servicesPicker");
+        if (!servicesPicked) {
+          setFieldsValue({ services: [] });
+          return null;
+        }
 
-        const servicesData = [];
-        services.forEach(serviceName =>
-          servicesData.push({ name: serviceName })
-        );
-        setFieldsValue({ services: servicesData });
+        const existingServices = getFieldValue("services") || [];
+        const newServices = [];
+
+        servicesPicked.forEach(serviceName => {
+          const form = existingServices.find(obj => obj.name === serviceName);
+          newServices.push(form || { name: serviceName });
+        });
+        setFieldsValue({ services: newServices });
 
         return null;
       }
