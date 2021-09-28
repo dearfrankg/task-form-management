@@ -214,11 +214,25 @@ const get = {
     children
   }),
 
-  conditional: (name, shouldUpdate, condition, children) => ({
+  conditional: (
+    name,
+    shouldUpdate,
+    condition,
+    children,
+    whenCondition = ""
+  ) => ({
     type: "conditional",
     name,
     shouldUpdate,
     condition,
+    children,
+    whenCondition
+  }),
+
+  arrayOfObjectExperimental: (name, config, children) => ({
+    type: "arrayOfObjects",
+    name,
+    config,
     children
   })
 };
@@ -757,20 +771,84 @@ See antd form api docs.
           get.title("Conditional with select"),
           select,
           conditional,
-          get.json(select),
-          get.json(conditional),
-          get.showFields()
+          get.grid(
+            "grid1",
+            [12, 12],
+            [0, 0],
+            [
+              get.showFields(),
+              get.grid(
+                "grid2",
+                [24],
+                [0, 0],
+                [get.json(select), get.json(conditional)]
+              )
+            ]
+          )
         ]
       };
     })(),
 
     example2: (() => {
-      const select = get.select(
+      /*
+         GAME PLAN 
+
+            1. multi-select 
+              - controls add/remove of services
+            2. condition 
+                - shouldUpdate
+                  - when services multi-select changes
+                - condition
+                  - when services array is not empty
+                - whenCondition 
+                  - populate services collection with only name
+                  - this does not overwrite existing data 
+                  - render arrayOfObjects without add/remove buttons
+
+      */
+
+      const comment = `
+    {
+      myUpdateFn: (prevValues, curValues) =>
+        prevValues.services !== curValues.services,
+
+      myConditionFn: ({ getFieldValue }) => !!getFieldValue("services"),
+
+      myWhenConditionFn: ({ getFieldValue }, RenderField) => {
+        const services = getFieldValue("services");
+        console.log("services: ", services);
+
+        return services.map((serviceName, serviceIndex) => {
+          const child = get.grid(
+            "serviceGrid",
+            [6, 6, 6, 6],
+            [0, 0],
+            [
+              { type: "text", label: serviceName },
+              { type: "date", name: '{serviceName}-startDate' },
+              { type: "time", name: '{ serviceName } -endDate' }
+            ]
+          );
+
+          return <RenderField key={serviceIndex} item={child} />;
+        });
+      }
+    }
+    `;
+
+      const select = get.multiSelect(
         "services",
         "Services",
-        [{ label: "Bakery" }, { label: "Tires" }],
+        [
+          { label: "Optometrist" },
+          { label: "Hearing Aids" },
+          { label: "Bakery" },
+          { label: "Tires" },
+          { label: "Pharmacy" }
+        ],
         { allowClear: true }
       );
+
       const conditional = get.conditional(
         "conditional",
         "myUpdateFn",
@@ -780,17 +858,37 @@ See antd form api docs.
             get.date("startdate", "Start date"),
             get.time("startTime", "Start time")
           ])
-        ]
+        ],
+        "myWhenConditionFn"
       );
+
+      const aux = {
+        type: "pre",
+        label: comment,
+        config: { style: { fontSize: "0.7rem" } }
+      };
 
       return {
         fields: [
-          get.title("Array of objects containing conditional with select"),
+          get.title("Array of possibilities"),
           select,
           conditional,
-          get.json(select),
-          get.json(conditional),
-          get.showFields()
+          get.showFields(),
+          aux,
+
+          get.grid(
+            "grid1",
+            [12, 12],
+            [0, 0],
+            [
+              get.grid(
+                "grid2",
+                [24],
+                [0, 0],
+                [get.json(select), get.json(conditional)]
+              )
+            ]
+          )
         ]
       };
     })()
@@ -813,7 +911,27 @@ See antd form api docs.
       myUpdateFn: (prevValues, curValues) =>
         prevValues.services !== curValues.services,
 
-      myConditionFn: ({ getFieldValue }) => !!getFieldValue("services")
+      myConditionFn: ({ getFieldValue }) => !!getFieldValue("services"),
+
+      myWhenConditionFn: ({ getFieldValue }, RenderField) => {
+        const services = getFieldValue("services");
+        console.log("services: ", services);
+
+        return services.map((serviceName, serviceIndex) => {
+          const child = get.grid(
+            "serviceGrid",
+            [6, 6, 6, 6],
+            [0, 0],
+            [
+              { type: "text", label: serviceName },
+              { type: "date", name: `${serviceName}-startDate` },
+              { type: "time", name: `${serviceName}-endDate` }
+            ]
+          );
+
+          return <RenderField key={serviceIndex} item={child} />;
+        });
+      }
     }
   },
   initialValues: {

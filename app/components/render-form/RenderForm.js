@@ -20,7 +20,7 @@ import {
   Tabs,
   Typography,
   PageHeader,
-  Image,
+  Image
 } from "antd";
 import { MinusCircleOutlined, PlusOutlined } from "@ant-design/icons";
 import { forEach } from "lodash";
@@ -31,6 +31,7 @@ const { Search } = Input;
 const { Text, Title } = Typography;
 
 let myFormConfig;
+let myForm;
 
 const antdFields = {
   inline: ({ item }) => {
@@ -46,34 +47,42 @@ const antdFields = {
   conditional: ({ item }) => {
     const { aux } = myFormConfig;
 
+    const { shouldUpdate, condition, whenCondition } = item;
+
     if (typeof aux !== "object") {
       return <p>Missing aux object</p>;
     }
 
-    if (typeof aux[condition] === "function") {
+    if (typeof aux[condition] !== "function") {
       return <p>Missing condition function</p>;
     }
 
-    const { shouldUpdate, condition } = item;
+    if (whenCondition && typeof aux[whenCondition] !== "function") {
+      return <p>Missing whenCondition function</p>;
+    }
 
-    const shouldUpdateFn = typeof aux[shouldUpdate] === "function" ? aux[shouldUpdate] : true;
-
+    const shouldUpdateFn =
+      typeof aux[shouldUpdate] === "function" ? aux[shouldUpdate] : true;
     const conditionFn = aux[condition];
+    const whenConditionFn = aux[whenCondition];
 
     return (
       <Form.Item shouldUpdate={shouldUpdateFn}>
         {() => {
-          const conditionMet = conditionFn(item.form);
+          const conditionMet = conditionFn(myForm);
           if (conditionMet) {
-            return item.children.map((child, i) => {
-              child.config = {
-                ...child.config,
-                disabled: item.config.disabled,
-              };
-              child.form = item.form;
+            if (whenConditionFn) {
+              return whenConditionFn(myForm, RenderField);
+            } else {
+              return item.children.map((child, i) => {
+                child.config = {
+                  ...child.config,
+                  disabled: item.config.disabled
+                };
 
-              return <RenderField key={i} item={child} />;
-            });
+                return <RenderField key={i} item={child} />;
+              });
+            }
           } else {
             return null;
           }
@@ -125,6 +134,53 @@ const antdFields = {
     );
   },
 
+  arrayOfObjectExperimental: ({ item }) => {
+    return (
+      <Form.List name={item.name}>
+        {(fields, { add, remove }, { errors }) => (
+          <Fragment>
+            {fields.map(({ key, name, fieldKey, ...restField }) => {
+              return (
+                <Space
+                  key={key}
+                  style={{ display: "flex", marginBottom: 8 }}
+                  align="baseline"
+                >
+                  <Form.Item
+                    {...restField}
+                    name={[name, "first"]}
+                    fieldKey={[fieldKey, "first"]}
+                    rules={[{ required: true, message: "Missing first name" }]}
+                  >
+                    <Input placeholder="First Name" />
+                  </Form.Item>
+                  <Form.Item
+                    {...restField}
+                    name={[name, "last"]}
+                    fieldKey={[fieldKey, "last"]}
+                    rules={[{ required: true, message: "Missing last name" }]}
+                  >
+                    <Input placeholder="Last Name" />
+                  </Form.Item>
+                </Space>
+              );
+            })}
+            <Form.Item>
+              <Button
+                type="dashed"
+                onClick={() => add()}
+                block
+                icon={<PlusOutlined />}
+              >
+                Add field
+              </Button>
+            </Form.Item>
+          </Fragment>
+        )}
+      </Form.List>
+    );
+  },
+
   arrayOfObjects: ({ item }) => {
     const removeIcon = ({ field, item, remove }) => {
       return (
@@ -132,7 +188,7 @@ const antdFields = {
           disabled={item.config.disabled}
           className={styles.dynamicDeleteButton}
           style={{ top: 0 }}
-          onClick={(event) => {
+          onClick={event => {
             event.stopPropagation();
             !item.config.disabled && remove(field.name);
           }}
@@ -146,11 +202,10 @@ const antdFields = {
         ...field,
         name: [field.name, child.name],
         fieldKey: [field.fieldKey, child.name],
-        form: item.form,
         config: {
           ...child.config,
-          disabled: item.config.disabled,
-        },
+          disabled: item.config.disabled
+        }
       };
     };
 
@@ -161,8 +216,12 @@ const antdFields = {
             <Form.Item shouldUpdate={true}>
               {() => (
                 <Collapse {...item.config}>
-                  {fields.map((field) => {
-                    const header = item.form.getFieldValue([item.name, field.name, "name"]);
+                  {fields.map(field => {
+                    const header = myForm.getFieldValue([
+                      item.name,
+                      field.name,
+                      item.header
+                    ]);
 
                     return (
                       <Panel
@@ -172,7 +231,7 @@ const antdFields = {
                       >
                         {item.children.map((child, childIndex) => {
                           if (child.type === "inline") {
-                            child.children.forEach((grandChild) => {
+                            child.children.forEach(grandChild => {
                               grandChild = superCharge(item, grandChild, field);
                               // console.log("grandChild: ", grandChild);
                             });
@@ -208,7 +267,7 @@ const antdFields = {
   showFields: ({ item }) => {
     return (
       <Form.Item shouldUpdate label={item.label}>
-        {() => <pre>{JSON.stringify(item.form.getFieldsValue(), null, 2)}</pre>}
+        {() => <pre>{JSON.stringify(myForm.getFieldsValue(), null, 2)}</pre>}
       </Form.Item>
     );
   },
@@ -218,7 +277,8 @@ const antdFields = {
   },
 
   json: ({ item }) => {
-    const hasConfig = item.data.config && Object.keys(item.data.config).length === 0;
+    const hasConfig =
+      item.data.config && Object.keys(item.data.config).length === 0;
     if (hasConfig) delete item.data.config;
     const json = JSON.stringify(item.data, null, 2);
     return (
@@ -260,11 +320,17 @@ const antdFields = {
           return (
             <Collapse {...item.config}>
               {item.children.map((child, childIndex) => {
-                const header = item.form.getFieldValue(["events", childIndex, child.header]) || "";
+                const header =
+                  myForm.getFieldValue(["events", childIndex, child.header]) ||
+                  "";
                 setChildContent(child, childIndex);
 
                 return (
-                  <Panel key={`${item.name}-panel${childIndex}`} forceRender header={header}>
+                  <Panel
+                    key={`${item.name}-panel${childIndex}`}
+                    forceRender
+                    header={header}
+                  >
                     {child.content.map((content, contentIndex) => {
                       // expecting name to be an array?
                       content.name[1] = childIndex;
@@ -316,29 +382,39 @@ const antdFields = {
 
   inlineGroup: ({ item }) => {
     return (
-      <Space {...item.config} size="large">
-        {item.children.map((child, childIndex) => {
-          const style = { display: "inline-block", margin: 0 };
-          return (
-            <RenderField key={`${item.name}-group-${childIndex}`} item={{ ...child, style }} />
-          );
-        })}
-      </Space>
+      <Form.Item style={{ marginBottom: 0 }}>
+        <Space {...item.config} size="large">
+          {item.children.map((child, childIndex) => {
+            const style = { display: "inline-block", margin: 0 };
+            return (
+              <RenderField
+                key={`${item.name}-group-${childIndex}`}
+                item={{ ...child, style }}
+              />
+            );
+          })}
+        </Space>
+      </Form.Item>
     );
   },
 
   inlineGroupRight: ({ item }) => {
     return (
-      <div style={{ textAlign: "right" }}>
-        <Space {...item.config} size="large">
-          {item.children.map((child, childIndex) => {
-            const style = { display: "inline-block", margin: 0 };
-            return (
-              <RenderField key={`${item.name}-group-${childIndex}`} item={{ ...child, style }} />
-            );
-          })}
-        </Space>
-      </div>
+      <Form.Item style={{ marginBottom: 0 }}>
+        <div style={{ textAlign: "right" }}>
+          <Space {...item.config} size="large">
+            {item.children.map((child, childIndex) => {
+              const style = { display: "inline-block", margin: 0 };
+              return (
+                <RenderField
+                  key={`${item.name}-group-${childIndex}`}
+                  item={{ ...child, style }}
+                />
+              );
+            })}
+          </Space>
+        </div>
+      </Form.Item>
     );
   },
 
@@ -397,7 +473,12 @@ const antdFields = {
 
   switch: ({ item }) => {
     return (
-      <Form.Item valuePropName="checked" name={item.name} label={item.label} rules={item.rules}>
+      <Form.Item
+        valuePropName="checked"
+        name={item.name}
+        label={item.label}
+        rules={item.rules}
+      >
         <Switch {...item.config} checkedChildren="on" unCheckedChildren="off" />
       </Form.Item>
     );
@@ -411,7 +492,6 @@ const antdFields = {
         valuePropName="checked"
         indeterminate="false"
         rules={item.rules}
-        style={{ marginBottom: 0 }}
       >
         <Checkbox {...item.config}>{item.label}</Checkbox>
       </Form.Item>
@@ -493,7 +573,10 @@ const antdFields = {
           {item.options.map((option, i) => {
             const value = option.value || option.label || "";
             return (
-              <Select.Option key={`${item.name}-multiSelect-${i}`} value={value}>
+              <Select.Option
+                key={`${item.name}-multiSelect-${i}`}
+                value={value}
+              >
                 {option.label}
               </Select.Option>
             );
@@ -528,7 +611,12 @@ const antdFields = {
   time: ({ item }) => {
     return (
       <Form.Item name={item.name} label={item.label}>
-        <TimePicker {...item.config} use12Hours minuteStep={15} format="h:mm a" />
+        <TimePicker
+          {...item.config}
+          use12Hours
+          minuteStep={15}
+          format="h:mm a"
+        />
       </Form.Item>
     );
   },
@@ -543,12 +631,11 @@ const antdFields = {
             const cellDataId = `${item.name}-cell${childIndex}`;
             const childDataId = `${cellDataId}-${child.type}`;
             child.name = child.name || childDataId;
-            child.form = item.form;
             if (!child.config) child.config = {};
             child.config = {
               ...child.config,
               ["data-test-id"]: child.name || childDataId,
-              disabled: item.config.disabled,
+              disabled: item.config.disabled
             };
 
             return (
@@ -563,7 +650,11 @@ const antdFields = {
   },
 
   title: ({ item }) => {
-    return <Title {...item.config}>{item.label}</Title>;
+    return (
+      <Form.Item>
+        <Title {...item.config}>{item.label}</Title>
+      </Form.Item>
+    );
   },
 
   text: ({ item }) => {
@@ -577,7 +668,11 @@ const antdFields = {
   image: ({ item }) => {
     if (item.config.placeholderUrl) {
       item.config.placeholder = (
-        <Image preview={false} src={item.config.placeholderUrl} width={item.config.width} />
+        <Image
+          preview={false}
+          src={item.config.placeholderUrl}
+          width={item.config.width}
+        />
       );
       delete item.config.placeholderUrl;
     }
@@ -604,14 +699,14 @@ const antdFields = {
         <Text>{item.label}</Text>
       </Space>
     );
-  },
+  }
 };
 
 const samsFields = {};
 
 const fields = { ...antdFields, ...samsFields };
 
-const setFieldConfig = (item) => {
+const setFieldConfig = item => {
   if (!item.config) item.config = {};
 
   // set data-test-id
@@ -636,12 +731,12 @@ const RenderField = ({ item = {} }) => {
 
 export const RenderForm = ({ formConfig }) => {
   myFormConfig = formConfig;
+  myForm = formConfig.form.form;
 
   return (
     <Form {...formConfig.form}>
       <Space direction="vertical" size="small" style={{ width: "100%" }}>
         {formConfig.fields.map((item, i) => {
-          item.form = formConfig.form.form;
           return <RenderField key={`form-${i}`} item={item} />;
         })}
       </Space>
